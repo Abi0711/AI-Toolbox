@@ -24,8 +24,8 @@ project (AIToolbox LANGUAGES CXX)
 #
 # Some settings I found useful when compiling on Windows:
 #
-# -DCMAKE_GENERATOR_PLATFORM=x64
-# -DBOOST_LIBRARYDIR
+#-DCMAKE_GENERATOR_PLATFORM=x64
+#-DBOOST_LIBRARYDIR
 #
 # You may also want to force Boost to compile statically; you can change that
 # by uncommenting two lines in this script that you can find below (grep for
@@ -127,8 +127,8 @@ set(EIGEN_VERSION_REQUIRED 3.2.92)
 
 # Optional to force Boost to use static libraries. Can be useful on Windows.
 #
-# set(Boost_USE_STATIC_LIBS ON)
-# add_definitions(-DBOOST_PYTHON_STATIC_LIB)
+set(Boost_USE_STATIC_LIBS ON)
+add_definitions(-DBOOST_PYTHON_STATIC_LIB)
 
 find_package(Boost ${BOOST_VERSION_REQUIRED} REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
@@ -140,6 +140,19 @@ add_definitions("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
 find_package(Eigen3 ${EIGEN_VERSION_REQUIRED} REQUIRED)
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
+# find_package(LpSolve REQUIRED)
+# include_directories(SYSTEM ${LPSOLVE_INCLUDE_DIR})
+# Set explicit paths for lpsolve based on the package installation
+set(LPSOLVE_INCLUDE_DIR "/usr/include")
+set(LPSOLVE_LIBRARIES "/usr/lib/liblpsolve55.a")  # Using the static library
+# If static doesn't work, try the .so version:
+# set(LPSOLVE_LIBRARIES "/usr/lib/liblpsolve55.so")
+
+# You might also need to add these for extra dependencies
+find_library(LPSOLVE_LIB_DL "dl" REQUIRED)
+find_library(LPSOLVE_LIB_COLAMD "colamd" REQUIRED)
+
+# Your existing lines
 find_package(LpSolve REQUIRED)
 include_directories(SYSTEM ${LPSOLVE_INCLUDE_DIR})
 

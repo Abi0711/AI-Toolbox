@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include <istream>
+#include <iostream>
 #include <algorithm>
 
 #include <boost/tokenizer.hpp>
@@ -71,8 +72,10 @@ namespace AIToolbox {
         O = O_;
         discount = discount_;
 
-        if (!S || !A || !O)
+        if (!S || !A || !O){
+            std::cout << S <<"  "<< A <<" " << O << "\n";
             throw std::runtime_error("POMDP definition is incomplete");
+        }
 
         // Init matrices to store data.
         T.resize(boost::extents[S][A][S]);

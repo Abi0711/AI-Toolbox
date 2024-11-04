@@ -9,7 +9,7 @@
 #include <AIToolbox/POMDP/Types.hpp>
 #include <AIToolbox/POMDP/TypeTraits.hpp>
 #include <AIToolbox/MDP/Algorithms/Utils/Rollout.hpp>
-
+#include <chrono>
 namespace AIToolbox::POMDP {
     /**
      * @brief This class represents the POMCP online planner using UCB1.
@@ -338,10 +338,22 @@ namespace AIToolbox::POMDP {
 
         maxDepth_ = horizon;
         std::uniform_int_distribution<size_t> generator(0, graph_.belief.size()-1);
+    
 
-        for (unsigned i = 0; i < iterations_; ++i )
+        // Add at the start of the function:
+        auto start_time = std::chrono::steady_clock::now();
+
+        // Replace the loop with:
+        for (unsigned i = 0; i < iterations_; ++i) {
+            auto current_time = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time);
+            
+            if (elapsed.count() >= 1000) { //  1 second per second
+                break;
+            }
+            
             simulate(graph_, graph_.belief.at(generator(rand_)), 0);
-
+        }
         auto begin = std::begin(graph_.children);
         return std::distance(begin, findBestA(begin, std::end(graph_.children)));
     }

@@ -1,0 +1,118 @@
+# RockSample(11,11)
+discount: 0.95
+values: reward
+states: 1452 # 11x11 grid positions x 2^8 rock states
+actions: 13 # north south east west sample check1-8 exit
+observations: 3 # good bad none
+
+start: 
+uniform
+
+T: north
+0.0 0.9 0.0 0.0 0.0 0.0 0.0 0.0 # move up with 0.9 probability if not blocked
+identity # rock state doesn't change
+
+T: south
+0.9 0.0 0.0 0.0 0.0 0.0 0.0 0.0 # move down with 0.9 probability if not blocked
+identity
+
+T: east  
+0.0 0.0 0.9 0.0 0.0 0.0 0.0 0.0 # move right with 0.9 probability if not blocked
+identity
+
+T: west
+0.0 0.0 0.0 0.9 0.0 0.0 0.0 0.0 # move left with 0.9 probability if not blocked
+identity
+
+T: sample
+identity # position doesn't change
+identity # rock state changes only if at rock position
+
+T: check1
+identity
+identity
+
+T: check2
+identity
+identity
+
+T: check3
+identity
+identity
+
+T: check4
+identity
+identity
+
+T: check5
+identity
+identity
+
+T: check6
+identity
+identity
+
+T: check7
+identity
+identity
+
+T: check8
+identity
+identity
+
+T: exit
+terminal
+
+O: north
+identity
+
+O: south 
+identity
+
+O: east
+identity
+
+O: west
+identity
+
+O: sample
+identity
+
+O: check1
+0.95 0.05 0.0 # probability of correct observation decreases with distance
+0.05 0.95 0.0
+
+O: check2
+0.95 0.05 0.0
+0.05 0.95 0.0
+
+O: check3
+0.95 0.05 0.0
+0.05 0.95 0.0
+
+O: check4
+0.95 0.05 0.0
+0.05 0.95 0.0
+
+O: check5
+0.95 0.05 0.0
+0.05 0.95 0.0
+
+O: check6
+0.95 0.05 0.0
+0.05 0.95 0.0
+
+O: check7
+0.95 0.05 0.0
+0.05 0.95 0.0
+
+O: check8
+0.95 0.05 0.0
+0.05 0.95 0.0
+
+O: exit
+identity
+
+R: sample : * : * : * 10 # reward for sampling good rock
+R: sample : * : * : * -10 # penalty for sampling bad rock
+R: exit : border-state : * : * 10 # reward for exiting at right edge

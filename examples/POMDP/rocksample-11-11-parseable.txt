@@ -1,0 +1,94 @@
+discount: 0.95
+values: reward
+states: 1452
+actions: 13
+observations: 3
+
+start: uniform
+
+
+T: north
+uniform
+
+T: south
+uniform
+
+T: east
+uniform
+
+T: west
+uniform
+
+T: sample
+identity
+
+T: check1
+identity
+
+T: check2
+identity
+
+T: check3
+identity
+
+T: check4
+identity
+
+T: check5
+identity
+
+T: check6
+identity
+
+T: check7
+identity
+
+T: exit
+identity
+
+
+O: north
+uniform
+
+O: south
+uniform
+
+O: east
+uniform
+
+O: west
+uniform
+
+O: sample
+uniform
+
+O: check1
+0.95 0.05 0.0
+
+O: check2
+0.95 0.05 0.0
+
+O: check3
+0.95 0.05 0.0
+
+O: check4
+0.95 0.05 0.0
+
+O: check5
+0.95 0.05 0.0
+
+O: check6
+0.95 0.05 0.0
+
+O: check7
+0.95 0.05 0.0
+
+O: check8
+0.95 0.05 0.0
+
+O: exit
+uniform
+
+R: sample : * : * : * -10  # Default penalty for sampling
+R: sample : good : * : * 20  # Reward for sampling good rock
+R: exit : border : * : * 10  # Reward for exiting at right border
