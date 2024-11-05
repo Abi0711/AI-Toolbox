@@ -4,7 +4,6 @@ cmake -DCMAKE_BUILD_TYPE=Debug \
       -DCMAKE_CXX_STANDARD_REQUIRED=ON \
       -DCMAKE_CXX_FLAGS="-std=c++20" \
       -DMAKE_POMDP=1 \
-      -DMAKE_MDP=0 \
       -DMAKE_EXAMPLES=1 \
       -S/media/sf_Assignment3/AI-Toolbox \
       -B/media/sf_Assignment3/AI-Toolbox/build
@@ -12,7 +11,7 @@ cmake -DCMAKE_BUILD_TYPE=Debug \
 sudo apt update
 sudo apt install build-essential libgmp-dev libmpfr-dev libmpc-dev flex bison
 
-wget https://ftp.gnu.org/gnu/gcc/gcc-10.2.0/gcc-10.2.0.tar.gz
+wget https://ftp.gnu.org/CCCCCCgnu/gcc/gcc-10.2.0/gcc-10.2.0.tar.gz
 tar -xvf gcc-10.2.0.tar.gz
 cd gcc-10.2.0
 
@@ -22,3 +21,5 @@ sudo make install
 
 g++-10 --version
 [440.00, 350.00, 420.00, 390.00, 430.00, 380.00, 380.00, 420.00, 350.00, 360.00, 350.00, 390.00, 350.00, 360.00, 420.00]
+ [210.00, 200.00, 230.00, 200.00, 230.00, 250.00, 230.00, 220.00, 220.00, 230.00, 210.00, 180.00, 250.00, 230.00, 230.00]
+ Rewards list: [970.00, 930.00, 930.00, 920.00, 950.00, 980.00]Rewards list: [970.00, 930.00, 930.00, 920.00, 950.00, 980.00]

@@ -576,8 +576,585 @@ void chronoExample() {
     std::cout << "Time taken: " << ms.count() << " milliseconds" << std::endl;
 }
 
+inline AIToolbox::POMDP::Model<AIToolbox::MDP::Model> make9x9RockSampleProblemWithDistance() {
+    const size_t GRID_SIZE = 3;
+    const size_t NUM_ROCKS = 8;
+    const size_t S = GRID_SIZE * GRID_SIZE * (1 << NUM_ROCKS);
+    const size_t A = 13;  // north, south, east, west, sample, check1-8
+    const size_t O = 3;   // good, bad, none
+    const double MOVE_PROB = 0.9;
+
+    // Rock positions (x,y coordinates)
+    const std::vector<std::pair<int, int>> ROCK_POSITIONS = {
+        {0,0}, {1,0}, {2,0},
+        {0,1}, {1,1}, {2,1},
+        {0,2}, {1,2}
+    };
+
+    AIToolbox::POMDP::Model<AIToolbox::MDP::Model> model(O, S, A);
+    AIToolbox::DumbMatrix3D transitions(boost::extents[S][A][S]);
+    AIToolbox::DumbMatrix3D rewards(boost::extents[S][A][S]);
+    AIToolbox::DumbMatrix3D observations(boost::extents[S][A][O]);
+
+    // Calculate sensor efficiency based on distance
+    auto calculateEfficiency = [](int rx, int ry, int x, int y) {
+        double distance = std::sqrt(std::pow(rx - x, 2) + std::pow(ry - y, 2));
+        // Exponential decay of efficiency with distance
+        return std::exp(-0.5 * distance);
+    };
+
+    // Initialize movement actions and their transitions
+    auto setMovement = [&](size_t s, size_t action, size_t nextState) {
+        transitions[s][action][nextState] = MOVE_PROB;
+        transitions[s][action][s] = 1.0 - MOVE_PROB;
+    };
+
+    for(size_t s = 0; s < S; ++s) {
+        size_t pos = s % (GRID_SIZE * GRID_SIZE);
+        size_t x = pos % GRID_SIZE;
+        size_t y = pos / GRID_SIZE;
+
+        // Set default transitions for all actions in current state
+        std::fill_n(&transitions[s][0][0], A * S, 0.0);
+        
+        // Movement transitions
+        if(y < GRID_SIZE - 1) setMovement(s, A_NORTH, s + GRID_SIZE);
+        else transitions[s][A_NORTH][s] = 1.0;
+        
+        if(y > 0) setMovement(s, A_SOUTH, s - GRID_SIZE);
+        else transitions[s][A_SOUTH][s] = 1.0;
+        
+        if(x < GRID_SIZE - 1) setMovement(s, A_EAST, s + 1);
+        else transitions[s][A_EAST][s] = 1.0;
+        
+        if(x > 0) setMovement(s, A_WEST, s - 1);
+        else transitions[s][A_WEST][s] = 1.0;
+
+        // Static actions (SAMPLE and CHECK)
+        for(size_t a = A_SAMPLE; a < A; ++a) {
+            transitions[s][a][s] = 1.0;
+        }
+
+        // Set observations
+        std::fill_n(&observations[s][0][0], A * O, 0.0);
+        
+        // Movement and sample actions always observe 'none'
+        for(size_t a = 0; a <= A_SAMPLE; ++a) {
+            observations[s][a][O_NONE] = 1.0;
+        }
+
+        // Check actions observations with distance-based efficiency
+        for(size_t a = A_SAMPLE + 1; a < A; ++a) {
+            size_t rockIndex = a - A_SAMPLE - 1;
+            bool isGood = (s / (GRID_SIZE * GRID_SIZE)) & (1 << rockIndex);
+            
+            // Calculate sensor efficiency based on distance to rock
+            double efficiency = calculateEfficiency(
+                ROCK_POSITIONS[rockIndex].first,
+                ROCK_POSITIONS[rockIndex].second,
+                x, y
+            );
+
+            // Linear interpolation between perfect sensing (η=1) and random (η=0)
+            double correctProb = 0.5 + 0.5 * efficiency;  // ranges from 0.5 to 1.0
+            double incorrectProb = 1.0 - correctProb;     // ranges from 0.5 to 0.0
+
+            observations[s][a][O_GOOD] = isGood ? correctProb : incorrectProb;
+            observations[s][a][O_BAD] = isGood ? incorrectProb : correctProb;
+        }
+
+        // Set rewards
+        std::fill_n(&rewards[s][0][0], A * S, 0.0);
+        
+        // Exit reward
+        if(x == GRID_SIZE - 1) {
+            std::fill_n(&rewards[s][A_EAST][0], S, 10.0);
+        }
+        
+        // Sample penalty
+        std::fill_n(&rewards[s][A_SAMPLE][0], S, -10.0);
+    }
+
+    model.setTransitionFunction(transitions);
+    model.setRewardFunction(rewards);
+    model.setObservationFunction(observations);
+    model.setDiscount(0.95);
+    return model;
+}
+
+inline AIToolbox::POMDP::Model<AIToolbox::MDP::Model> make9x9RockSampleProblemEXAMPLE() {
+    std::cout << "jgkh" << std::endl;
+
+    const size_t GRID_SIZE = 4;
+    const size_t NUM_ROCKS = 4;
+    const size_t S = GRID_SIZE * GRID_SIZE * std::pow(3, NUM_ROCKS);
+    const size_t A = 9;  // north, south, east, west, sample, check1-4
+    const size_t O = 3;   // good, bad, none
+    const double MOVE_PROB = 0.9;
+
+    // Corrected to match NUM_ROCKS = 4
+    const std::vector<std::pair<int, int>> ROCK_POSITIONS = {
+        {0,0}, {1,0}, {2,0}, {0,1}  // Only 4 rock positions
+    };
+    std::cout << "jgkh" << std::endl;
+
+    AIToolbox::POMDP::Model<AIToolbox::MDP::Model> model(O, S, A);
+    std::cout << "jgkh" << std::endl;
+    AIToolbox::DumbMatrix3D transitions(boost::extents[S][A][S]);
+    AIToolbox::DumbMatrix3D rewards(boost::extents[S][A][S]);
+    AIToolbox::DumbMatrix3D observations(boost::extents[S][A][O]);
+    std::cout << "jgkh" << std::endl;
+
+
+    // Helper functions for state encoding
+    auto getRockState = [](size_t s, size_t rockIndex) {
+        size_t positionBits = 25;  // GRID_SIZE * GRID_SIZE
+        size_t shifted = s / positionBits;
+        for(size_t i = 0; i < rockIndex; ++i) {
+            shifted /= 3;  // Move to next rock's state
+        }
+        return shifted % 3;
+    };
+
+    auto setRockSampled = [](size_t s, size_t rockIndex) {
+        size_t positionBits = 25;  // GRID_SIZE * GRID_SIZE
+        size_t multiplier = std::pow(3, rockIndex);
+        size_t rockMask = 2 * multiplier * positionBits;
+        return (s & ~rockMask) | rockMask;
+    };
+
+
+    auto getNearestRock = [&](size_t x, size_t y) -> int {
+        int nearestRock = -1;
+        double minDist = std::numeric_limits<double>::max();
+        
+        for(size_t i = 0; i < NUM_ROCKS; ++i) {  // Changed to NUM_ROCKS
+            double dist = std::sqrt(
+                std::pow(ROCK_POSITIONS[i].first - static_cast<int>(x), 2) + 
+                std::pow(ROCK_POSITIONS[i].second - static_cast<int>(y), 2)
+            );
+            if(dist < minDist) {
+                minDist = dist;
+                nearestRock = i;
+            }
+        }
+        return minDist < 0.1 ? nearestRock : -1;
+    };
+
+    for(size_t s = 0; s < S; ++s) {
+        size_t pos = s % (GRID_SIZE * GRID_SIZE);
+        size_t x = pos % GRID_SIZE;
+        size_t y = pos / GRID_SIZE;
+        
+
+        // Movement transitions
+        size_t nextState;
+        if(y < GRID_SIZE - 1) {
+            nextState = s + GRID_SIZE;
+            transitions[s][0][nextState] = MOVE_PROB;
+            transitions[s][0][s] = 1.0 - MOVE_PROB;
+        } else {
+            transitions[s][0][s] = 1.0;
+        }
+        std::cout<<"passed 1"<<std::endl;
+        
+        if(y > 0) {
+            nextState = s - GRID_SIZE;
+            transitions[s][1][nextState] = MOVE_PROB;
+            transitions[s][1][s] = 1.0 - MOVE_PROB;
+        } else {
+            transitions[s][1][s] = 1.0;
+        }
+        std::cout<<"passed 2"<< std::endl;
+        if(x < GRID_SIZE - 1) {
+            nextState = s + 1;
+            transitions[s][2][nextState] = MOVE_PROB;
+            transitions[s][2][s] = 1.0 - MOVE_PROB;
+        } else {
+            transitions[s][2][s] = 1.0;
+        }
+        
+        if(x > 0) {
+            nextState = s - 1;
+            transitions[s][3][nextState] = MOVE_PROB;
+            transitions[s][3][s] = 1.0 - MOVE_PROB;
+        } else {
+            transitions[s][3][s] = 1.0;
+        }
+        std::cout<<"passed 1"<< std::endl;
+        // Sample action (action 4)
+        int nearestRock = getNearestRock(x, y);
+        if(nearestRock >= 0) {
+            size_t rockState = getRockState(s, nearestRock);
+            if(rockState != 2) {
+                size_t nextState = setRockSampled(s, nearestRock);
+                transitions[s][4][nextState] = 1.0;
+                rewards[s][4][nextState] = (rockState == 1) ? 10.0 : -10.0;
+            } else {
+                transitions[s][4][s] = 1.0;
+                rewards[s][4][s] = -10.0;
+            }
+        } else {
+            transitions[s][4][s] = 1.0;
+            rewards[s][4][s] = -10.0;
+        }
+
+        // Movement and sample actions observe 'none'
+        for(size_t a = 0; a <= 4; ++a) {
+            observations[s][a][2] = 1.0;  // O_NONE = 2
+        }
+
+        // Check actions (5-8)
+        for(size_t a = 5; a < A; ++a) {
+            transitions[s][a][s] = 1.0;
+            size_t rockIndex = a - 5;
+            size_t rockState = getRockState(s, rockIndex);
+            
+            if(rockState == 2) {
+                observations[s][a][2] = 1.0;  // O_NONE = 2
+                continue;
+            }
+
+            double dist = std::sqrt(
+                std::pow(ROCK_POSITIONS[rockIndex].first - static_cast<int>(x), 2) + 
+                std::pow(ROCK_POSITIONS[rockIndex].second - static_cast<int>(y), 2)
+            );
+            double efficiency = std::exp(-0.5 * dist);
+            double correctProb = 0.5 + 0.5 * efficiency;
+            double incorrectProb = 1.0 - correctProb;
+
+            observations[s][a][0] = (rockState == 1) ? correctProb : incorrectProb;  // O_GOOD = 0
+            observations[s][a][1] = (rockState == 1) ? incorrectProb : correctProb;  // O_BAD = 1
+        }
+
+        // Exit reward
+        if(x == GRID_SIZE - 1) {
+            for(size_t sp = 0; sp < S; ++sp) {
+                rewards[s][2][sp] = 10.0;  // A_EAST = 2
+            }
+        }
+    }
+
+    model.setTransitionFunction(transitions);
+    model.setRewardFunction(rewards);
+    model.setObservationFunction(observations);
+    model.setDiscount(0.95);
+    return model;
+}
+
+inline AIToolbox::POMDP::Model<AIToolbox::MDP::Model> testerf() {
+    std::cout << "jgkh" << std::endl;
+    const size_t GRID_SIZE = 5;
+    const size_t NUM_ROCKS = 4;
+    const size_t S = GRID_SIZE * GRID_SIZE * std::pow(3, NUM_ROCKS);
+    const size_t A = 9;  // north, south, east, west, sample, check1-4
+    const size_t O = 3;   // good, bad, none
+    const double MOVE_PROB = 0.9;
+    
+    AIToolbox::POMDP::Model<AIToolbox::MDP::Model> model(O, S, A);
+
+    // Fixed rock positions for 4 rocks
+    const std::vector<std::pair<int, int>> ROCK_POSITIONS = {
+        {0,0}, {1,0}, {2,0}, {0,1}
+    };
+    std::cout << "jgjkh" << std::endl;
+
+    AIToolbox::DumbMatrix3D transitions(boost::extents[S][A][S]);
+    AIToolbox::DumbMatrix3D rewards(boost::extents[S][A][S]);
+    AIToolbox::DumbMatrix3D observations(boost::extents[S][A][O]);
+
+    // Fast state manipulation functions
+    auto getRockState = [](size_t s, size_t rockIndex) {
+        return (s / (25 * static_cast<size_t>(std::pow(3, rockIndex)))) % 3;
+    };
+
+    auto setRockSampled = [](size_t s, size_t rockIndex) {
+        const size_t positionBits = 25;
+        const size_t power = std::pow(3, rockIndex);
+        const size_t mask = ~(2ULL * power * positionBits);
+        return (s & mask) | (2ULL * power * positionBits);
+    };
+
+    // Fast lookup for distances
+    std::vector<std::vector<double>> rockEfficiencies(GRID_SIZE * GRID_SIZE, 
+                                                     std::vector<double>(NUM_ROCKS));
+    std::cout << "look" << std::endl;
+    
+    for(size_t pos = 0; pos < GRID_SIZE * GRID_SIZE; ++pos) {
+        int x = pos % GRID_SIZE;
+        int y = pos / GRID_SIZE;
+        for(size_t r = 0; r < NUM_ROCKS; ++r) {
+            double dist = std::sqrt(
+                std::pow(ROCK_POSITIONS[r].first - x, 2) + 
+                std::pow(ROCK_POSITIONS[r].second - y, 2)
+            );
+            rockEfficiencies[pos][r] = std::exp(-0.5 * dist);
+        }
+    }
+    std::cout << "start" << std::endl;
+    
+    for(size_t s = 0; s < S; ++s) {
+        size_t pos = s % (GRID_SIZE * GRID_SIZE);
+        size_t x = pos % GRID_SIZE;
+        size_t y = pos / GRID_SIZE;
+
+        // Movement actions (0-3)
+        if(y < GRID_SIZE - 1) {
+            transitions[s][0][s + GRID_SIZE] = MOVE_PROB;
+            transitions[s][0][s] = 1.0 - MOVE_PROB;
+            observations[s][0][2] = 1.0;
+        } else {
+            transitions[s][0][s] = 1.0;
+            observations[s][0][2] = 1.0;
+        }
+        
+        if(y > 0) {
+            transitions[s][1][s - GRID_SIZE] = MOVE_PROB;
+            transitions[s][1][s] = 1.0 - MOVE_PROB;
+            observations[s][1][2] = 1.0;
+        } else {
+            transitions[s][1][s] = 1.0;
+            observations[s][1][2] = 1.0;
+        }
+        
+        if(x < GRID_SIZE - 1) {
+            transitions[s][2][s + 1] = MOVE_PROB;
+            transitions[s][2][s] = 1.0 - MOVE_PROB;
+            observations[s][2][2] = 1.0;
+            if(x == GRID_SIZE - 2) {  // About to exit
+                rewards[s][2][s + 1] = 10.0;
+            }
+        } else {
+            transitions[s][2][s] = 1.0;
+            observations[s][2][2] = 1.0;
+        }
+        
+        if(x > 0) {
+            transitions[s][3][s - 1] = MOVE_PROB;
+            transitions[s][3][s] = 1.0 - MOVE_PROB;
+            observations[s][3][2] = 1.0;
+        } else {
+            transitions[s][3][s] = 1.0;
+            observations[s][3][2] = 1.0;
+        }
+    std::cout << s << std::endl;
+
+        // Sample action (4)
+        transitions[s][4][s] = 1.0;
+        observations[s][4][2] = 1.0;
+        bool canSample = false;
+        
+        // Check if we're at any rock position
+        for(size_t r = 0; r < NUM_ROCKS; ++r) {
+            if(x == ROCK_POSITIONS[r].first && y == ROCK_POSITIONS[r].second) {
+                size_t rockState = getRockState(s, r);
+                if(rockState != 2) {  // Not sampled
+                    transitions[s][4][setRockSampled(s, r)] = 1.0;
+                    transitions[s][4][s] = 0.0;
+                    rewards[s][4][setRockSampled(s, r)] = (rockState == 1) ? 10.0 : -10.0;
+                    canSample = true;
+                }
+                break;
+            }
+        }
+        
+        if(!canSample) {
+            rewards[s][4][s] = -10.0;
+        }
+
+        // Check actions (5-8)
+        for(size_t r = 0; r < NUM_ROCKS; ++r) {
+            size_t a = r + 5;
+            transitions[s][a][s] = 1.0;
+            
+            size_t rockState = getRockState(s, r);
+            if(rockState == 2) {
+                observations[s][a][2] = 1.0;  // Already sampled
+                continue;
+            }
+
+            double efficiency = rockEfficiencies[pos][r];
+            double correctProb = 0.5 + 0.5 * efficiency;
+            
+            observations[s][a][0] = (rockState == 1) ? correctProb : 1.0 - correctProb;
+            observations[s][a][1] = (rockState == 1) ? 1.0 - correctProb : correctProb;
+        }
+    }
+
+    model.setTransitionFunction(transitions);
+    model.setRewardFunction(rewards);
+    model.setObservationFunction(observations);
+    model.setDiscount(0.95);
+
+    return model;
+}
+inline AIToolbox::POMDP::Model<AIToolbox::MDP::Model> testerplease() {
+    const size_t GRID_SIZE = 5;
+    const size_t NUM_ROCKS = 4;
+    const size_t S = GRID_SIZE * GRID_SIZE * std::pow(3, NUM_ROCKS);
+    const size_t A = 9;
+    const size_t O = 3;
+    const double MOVE_PROB = 0.9;
+    
+    AIToolbox::POMDP::Model<AIToolbox::MDP::Model> model(O, S, A);
+
+    const std::vector<std::pair<int, int>> ROCK_POSITIONS = {
+        {0,0}, {1,0}, {2,0}, {0,1}
+    };
+
+    AIToolbox::DumbMatrix3D transitions(boost::extents[S][A][S]);
+    AIToolbox::DumbMatrix3D rewards(boost::extents[S][A][S]);
+    AIToolbox::DumbMatrix3D observations(boost::extents[S][A][O]);
+
+    // Initialize all matrices to 0
+    for(size_t s = 0; s < S; ++s) {
+        for(size_t a = 0; a < A; ++a) {
+            for(size_t sp = 0; sp < S; ++sp) {
+                transitions[s][a][sp] = 0.0;
+                rewards[s][a][sp] = 0.0;
+            }
+            for(size_t o = 0; o < O; ++o) {
+                observations[s][a][o] = 0.0;
+            }
+            observations[s][a][2] = 1.0;  // Default to 'none' observation
+        }
+    }
+
+    auto getRockState = [](size_t s, size_t rockIndex) {
+        return (s / (25 * static_cast<size_t>(std::pow(3, rockIndex)))) % 3;
+    };
+
+    auto setRockSampled = [](size_t s, size_t rockIndex) {
+        const size_t positionBits = 25;
+        const size_t power = std::pow(3, rockIndex);
+        const size_t mask = ~(2ULL * power * positionBits);
+        return (s & mask) | (2ULL * power * positionBits);
+    };
+
+    // Precompute rock efficiencies
+    std::vector<std::vector<double>> rockEfficiencies(GRID_SIZE * GRID_SIZE, 
+                                                     std::vector<double>(NUM_ROCKS));
+    for(size_t pos = 0; pos < GRID_SIZE * GRID_SIZE; ++pos) {
+        int x = pos % GRID_SIZE;
+        int y = pos / GRID_SIZE;
+        for(size_t r = 0; r < NUM_ROCKS; ++r) {
+            double dist = std::sqrt(
+                std::pow(ROCK_POSITIONS[r].first - x, 2) + 
+                std::pow(ROCK_POSITIONS[r].second - y, 2)
+            );
+            rockEfficiencies[pos][r] = std::exp(-0.5 * dist);
+        }
+    }
+    
+    for(size_t s = 0; s < S; ++s) {
+        size_t pos = s % (GRID_SIZE * GRID_SIZE);
+        size_t x = pos % GRID_SIZE;
+        size_t y = pos / GRID_SIZE;
+
+        // North
+        if(y < GRID_SIZE - 1) {
+            transitions[s][0][s + GRID_SIZE] = MOVE_PROB;
+            transitions[s][0][s] = 1.0 - MOVE_PROB;
+        } else {
+            transitions[s][0][s] = 1.0;
+        }
+
+        // South
+        if(y > 0) {
+            transitions[s][1][s - GRID_SIZE] = MOVE_PROB;
+            transitions[s][1][s] = 1.0 - MOVE_PROB;
+        } else {
+            transitions[s][1][s] = 1.0;
+        }
+
+        // East
+        if(x < GRID_SIZE - 1) {
+            transitions[s][2][s + 1] = MOVE_PROB;
+            transitions[s][2][s] = 1.0 - MOVE_PROB;
+            if(x == GRID_SIZE - 2) {
+                rewards[s][2][s + 1] = 10.0;
+            }
+        } else {
+            transitions[s][2][s] = 1.0;
+        }
+
+        // West
+        if(x > 0) {
+            transitions[s][3][s - 1] = MOVE_PROB;
+            transitions[s][3][s] = 1.0 - MOVE_PROB;
+        } else {
+            transitions[s][3][s] = 1.0;
+        }
+
+        // Sample action
+        bool sampledRock = false;
+        for(size_t r = 0; r < NUM_ROCKS; ++r) {
+            if(x == ROCK_POSITIONS[r].first && y == ROCK_POSITIONS[r].second) {
+                size_t rockState = getRockState(s, r);
+                if(rockState != 2) {  // Not sampled
+                    size_t nextState = setRockSampled(s, r);
+                    transitions[s][4][nextState] = 1.0;
+                    rewards[s][4][nextState] = (rockState == 1) ? 10.0 : -10.0;
+                    sampledRock = true;
+                }
+                break;
+            }
+        }
+        if(!sampledRock) {
+            transitions[s][4][s] = 1.0;
+            rewards[s][4][s] = -10.0;
+        }
+
+        // Check actions
+        for(size_t r = 0; r < NUM_ROCKS; ++r) {
+            size_t a = r + 5;
+            transitions[s][a][s] = 1.0;  // Stay in same state
+            
+            size_t rockState = getRockState(s, r);
+            if(rockState == 2) {
+                observations[s][a][2] = 1.0;  // None observation if sampled
+                continue;
+            }
+
+            double efficiency = rockEfficiencies[pos][r];
+            double correctProb = 0.5 + 0.5 * efficiency;
+            
+            if(rockState == 1) {  // Good rock
+                observations[s][a][0] = correctProb;     // Good observation
+                observations[s][a][1] = 1.0 - correctProb; // Bad observation
+            } else {  // Bad rock
+                observations[s][a][0] = 1.0 - correctProb; // Good observation
+                observations[s][a][1] = correctProb;     // Bad observation
+            }
+        }
+    }
+
+    // Validate transition probabilities
+    for(size_t s = 0; s < S; ++s) {
+        for(size_t a = 0; a < A; ++a) {
+            double sum = 0.0;
+            for(size_t sp = 0; sp < S; ++sp) {
+                sum += transitions[s][a][sp];
+            }
+            if(std::abs(sum - 1.0) > 1e-9) {
+                std::cout << "Invalid transition probabilities for state " << s 
+                         << " action " << a << " sum: " << sum << std::endl;
+            }
+        }
+    }
+
+    model.setTransitionFunction(transitions);
+    model.setRewardFunction(rewards);
+    model.setObservationFunction(observations);
+    model.setDiscount(0.95);
+
+    return model;
+}
+
 inline double POMCProck(unsigned horizon){
-    AIToolbox::POMDP::Model m = make9x9RockSampleProblem();
+    std::cout << "jgkh" << std::endl;
+
+    AIToolbox::POMDP::Model m = testerplease();
     std::cout<<"made model"<<"\n";
     //     //for 7x5
     // const size_t GRID_SIZE = 7;
@@ -591,14 +1168,16 @@ inline double POMCProck(unsigned horizon){
     // unsigned horizon = 50;         // Smaller grid means shorter paths to goal
 
             //for 9x8
-    const size_t GRID_SIZE = 3;
-    const size_t NUM_ROCKS = 8;
+    const size_t GRID_SIZE = 4;
+    const size_t NUM_ROCKS = 4;
         // POMCP Parameters
-    size_t beliefSize = 2000;       // More particles for better belief representation
+    size_t beliefSize = 1500;       // More particles for better belief representation
     unsigned iterations = 1500;      // More thorough search
     double explorationConstant = 25.0;
     
-    const size_t S = GRID_SIZE * GRID_SIZE * (1 << NUM_ROCKS); 
+    //const size_t S = GRID_SIZE * GRID_SIZE * (1 << NUM_ROCKS); 
+     const size_t S = GRID_SIZE * GRID_SIZE * std::pow(3, NUM_ROCKS);  // Use base-3 for rock states
+
     AIToolbox::POMDP::Belief initialBelief(S);
     initialBelief.fill(1.0/S);  // Each state has equal probability
     // Random engine for sampling
@@ -668,7 +1247,7 @@ int main() {
     double total = 0.0;
 
     for (int i = 0; i < 15; ++i) {
-        double reward = POMCProck(25);
+        double reward = POMCProck(100);
         rewards.push_back(reward);
         total += reward;
         

@@ -379,7 +379,8 @@ namespace AIToolbox::POMDP {
                                        std::forward_as_tuple(o),
                                        std::forward_as_tuple(s1));
                 // This stops automatically if we go out of depth
-                futureRew = rollout(model_, s1, maxDepth_ - depth + 1, rand_);
+                futureRew = adaptiveRollout(model_, s1, maxDepth_ - depth + 1, rand_);
+                // futureRew = rollout(model_, s1, maxDepth_ - depth + 1, rand_);
             }
             else {
                 ot->second.belief.push_back(s1);
